@@ -55,7 +55,7 @@ interpreter running the hub. Projects without a server go in `tools`.
    its log stays visible and it survives the hub exiting. Output encoding is
    forced via `PYTHONIOENCODING=utf-8` because every service here can print
    non-cp1252 text.
-4. **`HomeNetworkMonitor` needs `MONITOR_NO_BROWSER=1`** when spawned, or it
+4. **`wifi-network-monitor` needs `MONITOR_NO_BROWSER=1`** when spawned, or it
    opens a browser tab every time (`webbrowser.open` is unconditional
    otherwise). `disk-cleanup` and `VocalCoach` take `--no-browser` /
    `-NoBrowser` natively.

@@ -10,13 +10,13 @@
     },
     {
       "id": "network-monitor",
-      "name": "HomeNetworkMonitor",
+      "name": "wifi-network-monitor",
       "description": "Live home-network dashboard: device discovery, latency and per-device traffic.",
       "port": 8765,
       "url": "http://127.0.0.1:8765/",
       "start": {
         "command": ["python", "app\\live_monitor.py"],
-        "cwd": "HomeNetworkMonitor",
+        "cwd": "wifi-network-monitor",
         "env": { "MONITOR_NO_BROWSER": "1" }
       }
     },
