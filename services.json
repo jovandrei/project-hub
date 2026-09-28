@@ -66,6 +66,11 @@
       "name": "nirvana-concert-images",
       "description": "Resumable scraper archiving every LiveNIRVANA concert image.",
       "entry": "python scrape.py"
+    },
+    {
+      "name": "sysmon",
+      "description": "Live temperature readout: GPU via nvidia-smi, sparkline history.",
+      "entry": "python temps.py"
     }
   ]
 }
