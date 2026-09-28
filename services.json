@@ -1,0 +1,71 @@
+{
+  "services": [
+    {
+      "id": "hub",
+      "name": "project-hub",
+      "description": "This page. Index and launcher for the other services.",
+      "port": 8760,
+      "url": "http://127.0.0.1:8760/",
+      "self": true
+    },
+    {
+      "id": "network-monitor",
+      "name": "HomeNetworkMonitor",
+      "description": "Live home-network dashboard: device discovery, latency and per-device traffic.",
+      "port": 8765,
+      "url": "http://127.0.0.1:8765/",
+      "start": {
+        "command": ["python", "app\\live_monitor.py"],
+        "cwd": "HomeNetworkMonitor",
+        "env": { "MONITOR_NO_BROWSER": "1" }
+      }
+    },
+    {
+      "id": "disk-cleanup",
+      "name": "disk-cleanup",
+      "description": "Read-only C: drive inventory and viewer, to decide what to delete.",
+      "port": 8770,
+      "url": "http://127.0.0.1:8770/",
+      "start": {
+        "command": ["python", "app.py", "--no-browser"],
+        "cwd": "disk-cleanup"
+      }
+    },
+    {
+      "id": "vocalcoach",
+      "name": "singing-practice-tools",
+      "description": "VocalCoach practice site: microphone becomes notes, with durations.",
+      "port": 8731,
+      "url": "http://127.0.0.1:8731/",
+      "start": {
+        "command": ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass",
+                    "-File", "VocalCoach\\scripts\\practice-server.ps1",
+                    "start", "-NoBrowser"],
+        "cwd": "singing-practice-tools"
+      }
+    },
+    {
+      "id": "model-compare",
+      "name": "model-compare",
+      "description": "Copilot vs Devin model pickers: cost vs benchmark performance chart.",
+      "port": 8780,
+      "url": "http://127.0.0.1:8780/",
+      "start": {
+        "command": ["python", "-m", "http.server", "8780", "--bind", "127.0.0.1"],
+        "cwd": "model-compare"
+      }
+    }
+  ],
+  "tools": [
+    {
+      "name": "chrome-bookmarks",
+      "description": "Reads and re-files Chrome bookmarks; flags dead links.",
+      "entry": "python organize.py report"
+    },
+    {
+      "name": "nirvana-concert-images",
+      "description": "Resumable scraper archiving every LiveNIRVANA concert image.",
+      "entry": "python scrape.py"
+    }
+  ]
+}

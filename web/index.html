@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect x='1' y='1' width='6' height='6' rx='1' fill='%234da3ff'/><rect x='9' y='1' width='6' height='6' rx='1' fill='%2333c98d'/><rect x='1' y='9' width='6' height='6' rx='1' fill='%23f0b429'/><rect x='9' y='9' width='6' height='6' rx='1' fill='%236b7280'/></svg>">
+<title>C:\Projects</title>
+<style>
+  :root {
+    --bg: #14161a; --panel: #1c1f26; --line: #2a2f3a;
+    --text: #d7dbe2; --dim: #8b93a3; --accent: #4da3ff;
+    --up: #33c98d; --starting: #f0b429; --down: #6b7280;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 28px 32px; background: var(--bg); color: var(--text);
+    font: 14px/1.45 "Segoe UI", system-ui, sans-serif;
+  }
+  header { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+  h1 { font-size: 20px; font-weight: 600; margin: 0; font-family: Consolas, monospace; }
+  h1 .slash { color: var(--dim); }
+  .spacer { flex: 1; }
+  button {
+    background: var(--panel); color: var(--text); border: 1px solid var(--line);
+    border-radius: 6px; padding: 6px 14px; font: inherit; cursor: pointer;
+  }
+  button:hover { border-color: var(--accent); }
+  button:disabled { opacity: .45; cursor: default; }
+  button.primary { border-color: #2f6db3; }
+  button.danger:hover { border-color: #c0534f; }
+  table { width: 100%; border-collapse: collapse; background: var(--panel); border-radius: 8px; overflow: hidden; }
+  th, td { padding: 9px 14px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  th { color: var(--dim); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+  tr:last-child td { border-bottom: none; }
+  td.url a, td.port { font-family: Consolas, monospace; font-size: 13px; }
+  td.url a { color: var(--accent); text-decoration: none; }
+  td.url a:hover { text-decoration: underline; }
+  td.url a.dead { color: var(--dim); pointer-events: none; }
+  td.desc { color: var(--dim); font-size: 13px; }
+  td.pid { font-family: Consolas, monospace; font-size: 12px; color: var(--dim); white-space: nowrap; }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
+  .st-up .dot { background: var(--up); }
+  .st-starting .dot { background: var(--starting); animation: pulse 1s infinite alternate; }
+  .st-down .dot { background: var(--down); }
+  @keyframes pulse { from { opacity: .35; } to { opacity: 1; } }
+  .st-word { font-weight: 600; font-size: 13px; }
+  .st-up .st-word { color: var(--up); }
+  .st-starting .st-word { color: var(--starting); }
+  .st-down .st-word { color: var(--down); }
+  .rowbtns button { padding: 3px 10px; font-size: 12px; margin-right: 6px; }
+  #notice { margin: 0 0 14px; padding: 9px 14px; border-radius: 6px; background: #3a2a1e;
+            color: var(--starting); font-size: 13px; display: none; white-space: pre-wrap; }
+  #meta { color: var(--dim); font-size: 12px; }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--dim); margin: 26px 0 8px; }
+  td.entry { font-family: Consolas, monospace; font-size: 12px; color: var(--dim); }
+</style>
+</head>
+<body>
+<header>
+  <h1>C:<span class="slash">\</span>Projects</h1>
+  <span class="spacer"></span>
+  <button id="startAll" class="primary">Start all</button>
+  <button id="stopAll" class="danger">Stop all</button>
+  <span id="meta"></span>
+</header>
+<div id="notice"></div>
+<table>
+  <thead><tr>
+    <th>Status</th><th>Service</th><th>URL</th><th>Port</th><th>PID</th><th>Up</th><th>Description</th><th></th>
+  </tr></thead>
+  <tbody id="rows"></tbody>
+</table>
+<h2>Tools (no server)</h2>
+<table>
+  <thead><tr><th>Project</th><th>Description</th><th>Run</th></tr></thead>
+  <tbody id="toolRows"></tbody>
+</table>
+<script>
+const rowsEl = document.getElementById('rows');
+const toolRowsEl = document.getElementById('toolRows');
+const metaEl = document.getElementById('meta');
+const noticeEl = document.getElementById('notice');
+let busy = false;
+
+function ago(ts) {
+  if (!ts) return '';
+  const s = Math.max(0, Math.round(Date.now() / 1000 - ts));
+  if (s < 60) return s + 's';
+  if (s < 3600) return Math.floor(s / 60) + 'm';
+  return Math.floor(s / 3600) + 'h ' + Math.floor(s % 3600 / 60) + 'm';
+}
+
+function esc(t) {
+  const d = document.createElement('div');
+  d.textContent = t == null ? '' : String(t);
+  return d.innerHTML;
+}
+
+function notice(msg) {
+  noticeEl.textContent = msg || '';
+  noticeEl.style.display = msg ? 'block' : 'none';
+}
+
+async function post(path) {
+  const r = await fetch(path, {method: 'POST', headers: {'X-Hub-Request': '1'}});
+  return {code: r.status, body: await r.json()};
+}
+
+async function action(sid, act) {
+  notice('');
+  const res = await post(`/api/services/${sid}/${act}`);
+  if (!res.body.ok) notice(res.body.error || `HTTP ${res.code}`);
+  setTimeout(refresh, 700);
+}
+
+async function all(act) {
+  notice('');
+  const res = await post(`/api/${act}-all`);
+  const failed = Object.entries(res.body.results || {})
+    .filter(([, r]) => !r.ok)
+    .map(([id, r]) => `${id}: ${r.error || 'failed'}`);
+  if (failed.length) notice(failed.join('\n'));
+  setTimeout(refresh, 700);
+}
+
+function renderRow(s) {
+  const tr = document.createElement('tr');
+  tr.className = 'st-' + s.state;
+  const word = {up: 'Running', starting: 'Starting', down: 'Stopped'}[s.state] || s.state;
+  const pids = s.listeners.map(l => esc(l.image) + ' ' + l.pid).join('<br>');
+  const link = s.state === 'up' || s.is_self
+    ? `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.url)}</a>`
+    : `<a class="dead">${esc(s.url)}</a>`;
+  let btns = '';
+  if (!s.is_self) {
+    if (s.managed) {
+      btns = s.state === 'down'
+        ? `<button onclick="action('${s.id}','start')">Start</button>`
+        : `<button onclick="action('${s.id}','stop')">Stop</button>
+           <button onclick="action('${s.id}','restart')">Restart</button>`;
+    } else {
+      btns = '<span style="color:var(--dim);font-size:12px">manual</span>';
+    }
+  }
+  tr.innerHTML =
+    `<td><span class="dot"></span><span class="st-word">${word}</span></td>` +
+    `<td>${esc(s.name)}</td>` +
+    `<td class="url">${link}</td>` +
+    `<td class="port">${s.port}</td>` +
+    `<td class="pid">${pids}</td>` +
+    `<td>${s.state === 'up' ? ago(s.up_since) : ''}</td>` +
+    `<td class="desc">${esc(s.description)}</td>` +
+    `<td class="rowbtns">${btns}</td>`;
+  return tr;
+}
+
+async function refresh() {
+  try {
+    const r = await fetch('/api/status');
+    const data = await r.json();
+    rowsEl.innerHTML = '';
+    data.services.forEach(s => rowsEl.appendChild(renderRow(s)));
+    if (!toolRowsEl.dataset.done) {
+      data.tools.forEach(t => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${esc(t.name)}</td><td class="desc">${esc(t.description)}</td>` +
+                       `<td class="entry">${esc(t.entry)}</td>`;
+        toolRowsEl.appendChild(tr);
+      });
+      toolRowsEl.dataset.done = '1';
+    }
+    metaEl.textContent = 'updated ' + new Date().toLocaleTimeString();
+  } catch (e) {
+    metaEl.textContent = 'hub unreachable';
+  }
+}
+
+document.getElementById('startAll').onclick = () => all('start');
+document.getElementById('stopAll').onclick = () => all('stop');
+refresh();
+setInterval(refresh, 2500);
+</script>
+</body>
+</html>
